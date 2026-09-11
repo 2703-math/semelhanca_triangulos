@@ -93,7 +93,7 @@ def plot_relacoes_metricas(c, b):
     A = (m, h)
     H_proj = (m, 0)
     
-    # Triângulo Principal (Preto) - Contorno externo
+    # Triângulo Principal
     fig.add_trace(go.Scatter(
         x=[B[0], C_vert[0], A[0], B[0]], 
         y=[B[1], C_vert[1], A[1], B[1]],
@@ -106,21 +106,11 @@ def plot_relacoes_metricas(c, b):
         mode="lines", line=dict(color="#e74c3c", width=2, dash="dash"), hoverinfo="skip"
     ))
     
-    # Rótulos coloridos para os lados correspondentes
-    # Hipotenusa a (dividida em m e n)
-    fig.add_annotation(x=m/2, y=-0.3, text=f"m = {m:.2f}", showarrow=False, font=dict(size=13, color="#2980b9", family="sans-serif"))
-    fig.add_annotation(x=m + n/2, y=-0.3, text=f"n = {n:.2f}", showarrow=False, font=dict(size=13, color="#e74c3c", family="sans-serif"))
-    
-    # Altura h
+    fig.add_annotation(x=m/2, y=-0.3, text=f"m = {m:.2f}", showarrow=False, font=dict(size=13, color="#2980b9"))
+    fig.add_annotation(x=m + n/2, y=-0.3, text=f"n = {n:.2f}", showarrow=False, font=dict(size=13, color="#c0392b"))
     fig.add_annotation(x=m - 0.4, y=h/2, text=f"h = {h:.2f}", showarrow=False, font=dict(size=13, color="#e74c3c"))
-    
-    # Cateto c (Esquerdo - Triângulo Intermediário/Azul)
     fig.add_annotation(x=m/2 - 0.4, y=h/2 + 0.3, text=f"c = {c:.2f}", showarrow=False, font=dict(size=13, color="#2980b9"))
-    
-    # Cateto b (Direito - Triângulo Menor/Vermelho)
     fig.add_annotation(x=m + n/2 + 0.4, y=h/2 + 0.3, text=f"b = {b:.2f}", showarrow=False, font=dict(size=13, color="#c0392b"))
-    
-    # Hipotenusa a (Total)
     fig.add_annotation(x=a/2, y=-0.8, text=f"Hipotenusa a = {a:.2f}", showarrow=False, font=dict(size=14, color="#2c3e50", weight="bold"))
 
     fig.update_layout(
@@ -130,35 +120,51 @@ def plot_relacoes_metricas(c, b):
     )
     return fig
 
-def plot_triangulo_isolado(pts, cor, nome, girar=False, espelhar=False):
-    """Plota um triângulo isolado aplicando transformações opcionais de rotação e espelhamento"""
+def transform_pt(pt, passos_rot, espelho):
+    x, y = pt
+    if espelho:
+        x = -x
+    for _ in range(passos_rot % 4):
+        x, y = -y, x
+    return (x, y)
+
+def plot_triangulo_isolado(v0, v1, v2, ang_v0, ang_v1, ang_v2, cor, nome, passos_rot, espelhar):
+    tv0 = transform_pt(v0, passos_rot, espelhar)
+    tv1 = transform_pt(v1, passos_rot, espelhar)
+    tv2 = transform_pt(v2, passos_rot, espelhar)
+    
+    cx = (tv0[0] + tv1[0] + tv2[0]) / 3.0
+    cy = (tv0[1] + tv1[1] + tv2[1]) / 3.0
+    
+    def label_pos(v):
+        return (v[0] + 0.32 * (cx - v[0]), v[1] + 0.32 * (cy - v[1]))
+    
+    p0 = label_pos(tv0)
+    p1 = label_pos(tv1)
+    p2 = label_pos(tv2)
+    
+    x_vals = [tv0[0], tv1[0], tv2[0], tv0[0]]
+    y_vals = [tv0[1], tv1[1], tv2[1], tv0[1]]
+    
     fig = go.Figure()
-    
-    pts_arr = np.array(pts, dtype=float)
-    
-    # Espelhamento horizontal opcional
-    if espelhar:
-        pts_arr[:, 0] = -pts_arr[:, 0]
-        
-    # Rotação de 90 graus horária opcional
-    if girar:
-        x_new = pts_arr[:, 1]
-        y_new = -pts_arr[:, 0]
-        pts_arr[:, 0] = x_new
-        pts_arr[:, 1] = y_new
-        
-    x_vals = pts_arr[:, 0].tolist() + [pts_arr[0, 0]]
-    y_vals = pts_arr[:, 1].tolist() + [pts_arr[0, 1]]
-    
     fig.add_trace(go.Scatter(
-        x=x_vals, y=y_vals, fill="toself", fillcolor=cor.replace("1)", "0.2)"),
+        x=x_vals, y=y_vals, fill="toself", fillcolor=cor.replace("1)", "0.15)"),
         line=dict(color=cor, width=3), hoverinfo="skip"
     ))
     
+    # Marcas/Rótulos dos ângulos internos
+    fig.add_annotation(x=p0[0], y=p0[1], text=ang_v0, showarrow=False, font=dict(size=13, color="#333", family="sans-serif"))
+    fig.add_annotation(x=p1[0], y=p1[1], text=ang_v1, showarrow=False, font=dict(size=13, color="#333", family="sans-serif"))
+    fig.add_annotation(x=p2[0], y=p2[1], text=ang_v2, showarrow=False, font=dict(size=13, color="#333", family="sans-serif"))
+    
+    all_x = [tv0[0], tv1[0], tv2[0]]
+    all_y = [tv0[1], tv1[1], tv2[1]]
+    max_range = max(max(map(abs, all_x)), max(map(abs, all_y)), 2.0) + 1.2
+    
     fig.update_layout(
-        xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-max(abs(np.array(x_vals)))+(-1), max(abs(np.array(x_vals)))+(1)]),
-        yaxis=dict(scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, visible=False, range=[-max(abs(np.array(y_vals)))+(-1), max(abs(np.array(y_vals)))+(1)]),
-        plot_bgcolor='white', margin=dict(l=0, r=0, t=10, b=10), height=250, showlegend=False,
+        xaxis=dict(showgrid=False, zeroline=False, visible=False, range=[-max_range, max_range]),
+        yaxis=dict(scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False, visible=False, range=[-max_range, max_range]),
+        plot_bgcolor='white', margin=dict(l=0, r=0, t=25, b=0), height=280, showlegend=False,
         title=dict(text=nome, font=dict(size=14, color=cor), x=0.5, xanchor='center')
     )
     return fig
@@ -262,7 +268,7 @@ with tab2:
     st.markdown("""
     <div class="concept-card" style="border-left-color: #27ae60;">
         <b>Definição:</b> Ao traçar a altura relativa à hipotenusa, dividimos o triângulo retângulo em dois menores. 
-        Todos os três triângulos formados são semelhantes entre si!
+        Todos os três triângulos formados são semelhantes entre si e possuem exatamente os mesmos ângulos internos ($\text{90°}, \alpha, \beta$)!
     </div>
     """, unsafe_allow_html=True)
     
@@ -295,38 +301,34 @@ with tab2:
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("🧩 Os 3 Triângulos Semelhantes Separados")
-    st.markdown("Abaixo visualizamos os triângulos decompostos. Você pode **girar** ou **espelhar** cada um para ver como se encaixam e provar a semelhança.")
-
-    # Pontos base dos triângulos normalizados na origem (0,0)
-    # 1. Triângulo Maior (Preto): vértices (0,0), (a,0), (m,h) -> reajustado para visualização limpa
-    pts_maior = [(0, 0), (a, 0), (m, h)]
-    # 2. Triângulo Intermediário (Azul): cateto c, projeção m, altura h
-    pts_inter = [(0, 0), (c, 0), (m, h) if m>0 else (0,h)] # simplificado para visualização didática
-    # 3. Triângulo Menor (Vermelho): cateto b, projeção n, altura h
-    pts_menor = [(0, 0), (b, 0), (n, h) if n>0 else (0,h)]
+    st.subheader("🧩 Os 3 Triângulos Semelhantes Separados com Marcação de Ângulos")
+    st.markdown("Use o seletor de rotação sucessiva e o espelhamento para girar os triângulos. Note como os ângulos internos **(90°, α e β)** correspondem perfeitamente em todos eles!")
 
     tcol1, tcol2, tcol3 = st.columns(3)
     
     with tcol1:
         st.markdown("<b>1. Triângulo Maior (Geral)</b>", unsafe_allow_html=True)
-        girar_1 = st.checkbox("Girar 90°", key="g1")
-        esp_1 = st.checkbox("Espelhar", key="e1")
-        st.plotly_chart(plot_triangulo_isolado([(0,0), (a,0), (m,h)], "#2c3e50", "Maior", girar_1, esp_1), use_container_width=True)
+        rot_1 = st.selectbox("Rotação", ["0°", "90°", "180°", "270°"], key="rot1")
+        esp_1 = st.checkbox("Espelhar", key="esp1")
+        passos_1 = {"0°":0, "90°":1, "180°":2, "270°":3}[rot_1]
+        fig_t1 = plot_triangulo_isolado((0,0), (c,0), (0,b), "90°", "α", "β", "#2c3e50", "Triângulo Maior", passos_1, esp_1)
+        st.plotly_chart(fig_t1, use_container_width=True)
 
     with tcol2:
         st.markdown("<b>2. Triângulo Intermediário</b>", unsafe_allow_html=True)
-        girar_2 = st.checkbox("Girar 90°", key="g2")
-        esp_2 = st.checkbox("Espelhar", key="e2")
-        # Coordenadas proporcionais limpas para o triângulo azul
-        st.plotly_chart(plot_triangulo_isolado([(0,0), (c,0), (c*(c/a), h)], "#2980b9", "Intermediário", girar_2, esp_2), use_container_width=True)
+        rot_2 = st.selectbox("Rotação", ["0°", "90°", "180°", "270°"], key="rot2")
+        esp_2 = st.checkbox("Espelhar", key="esp2")
+        passos_2 = {"0°":0, "90°":1, "180°":2, "270°":3}[rot_2]
+        fig_t2 = plot_triangulo_isolado((0,0), (m,0), (0,h), "90°", "α", "β", "#2980b9", "Triângulo Intermediário", passos_2, esp_2)
+        st.plotly_chart(fig_t2, use_container_width=True)
 
     with tcol3:
         st.markdown("<b>3. Triângulo Menor</b>", unsafe_allow_html=True)
-        girar_3 = st.checkbox("Girar 90°", key="g3")
-        esp_3 = st.checkbox("Espelhar", key="e3")
-        # Coordenadas proporcionais limpas para o triângulo vermelho
-        st.plotly_chart(plot_triangulo_isolado([(0,0), (b,0), (b*(n/a), h)], "#c0392b", "Menor", girar_3, esp_3), use_container_width=True)
+        rot_3 = st.selectbox("Rotação", ["0°", "90°", "180°", "270°"], key="rot3")
+        esp_3 = st.checkbox("Espelhar", key="esp3")
+        passos_3 = {"0°":0, "90°":1, "180°":2, "270°":3}[rot_3]
+        fig_t3 = plot_triangulo_isolado((0,0), (n,0), (0,h), "90°", "β", "α", "#c0392b", "Triângulo Menor", passos_3, esp_3)
+        st.plotly_chart(fig_t3, use_container_width=True)
 
 # ============================================
 # 3. TERNOS PITAGÓRICOS
